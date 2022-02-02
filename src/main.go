@@ -1,137 +1,175 @@
 package main
 
-
-// https://github.com/firebase/snippets-go/blob/master/admin/main.go
-
-
-// => https://firebase.google.com/docs/cloud-messaging/send-message
-
-// https://stackoverflow.com/questions/47431757/fcm-http-v1-how-to-get-access-token-using-go
-
 import (
-	_"reflect"
-	_"log"
 	"fmt"
+	"net/http"
+	"github.com/gin-gonic/gin"
+	"firebase.google.com/go/messaging"
+	"google.golang.org/api/option"
+	firebase "firebase.google.com/go"
 	"context"
-	//firebase "firebase.google.com/go"
-	// _"firebase.google.com/go/messaging"
-	// _"google.golang.org/api/option"
-	// _"github.com/gin-gonic/gin"
-	// types "github.com/sylvainSUPINTERNET/shopify-connector/types"
-	_"net/http"
-	// _"github.com/davecgh/go-spew/spew"
-	 "golang.org/x/oauth2/google"
-	 "golang.org/x/oauth2"
-	 "io/ioutil"
-	 "errors"
-	)
+	types "github.com/sylvainSUPINTERNET/shopify-connector/types"
+)
 
-
-const firebaseScope = "https://www.googleapis.com/auth/firebase.messaging"
-
-type tokenProvider struct {
-    tokenSource oauth2.TokenSource
-}
-
-// newTokenProvider function to get token for fcm-send
-func newTokenProvider(credentialsLocation string) (*tokenProvider, error) {
-    jsonKey, err := ioutil.ReadFile(credentialsLocation)
-    if err != nil {
-        return nil, errors.New("fcm: failed to read credentials file at: " + credentialsLocation)
-    }
-    cfg, err := google.JWTConfigFromJSON(jsonKey, firebaseScope)
-    if err != nil {
-        return nil, errors.New("fcm: failed to get JWT config for the firebase.messaging scope")
-    }
-    ts := cfg.TokenSource(context.Background())
-    return &tokenProvider{
-        tokenSource: ts,
-    }, nil
-}
-
-func (src *tokenProvider) token() (string, error) {
-    token, err := src.tokenSource.Token()
-    if err != nil {
-        return "", errors.New("fcm: failed to generate Bearer token")
-    }
-    return token.AccessToken, nil
-}
 
 func main() {
+	r := gin.Default()
+	gin.SetMode(gin.DebugMode) // use ReleaseMode
 
-	tokenProvider, err := newTokenProvider("../accountCredentials.json")
 	
-	if err != nil {
-		fmt.Errorf(" Error firebase init : %v", err)
-	}
-	
-
-	accessToken, _ := tokenProvider.token()
-	fmt.Println(accessToken);
-
-	// r := gin.Default()
-	// gin.SetMode(gin.DebugMode) // use ReleaseMode
-
-	// opt := option.WithCredentialsFile("../accountCredentials.json")
-	// app, _ := firebase.NewApp(context.Background(), nil, opt)
-	
-	// fcmClient, _ := app.Messaging(context.TODO())
-	
-    // spew.Dump(fcmClient)
+	r.POST("/webhook/order", func (c *gin.Context) {
+		// TODO from client android, generate token and save them to db
+		// here when we get order, we should get this token, and create with fcm client, new notification (using this token)
+		var webhookOrder types.WebhookOrder
+		c.BindJSON(&webhookOrder)
+		fmt.Println(webhookOrder.Email)
+		c.JSON(http.StatusOK, gin.H{"newOrder":webhookOrder})
+	});
 
 
-	// if err != nil {
-	// 	fmt.Errorf(" Error firebase init : %v", err)
-	// 	//return nil, fmt.Errorf(" Error firebase init : %v", err)
-	// }
+	r.GET("/test/notif", func ( c *gin.Context)  {
+		opt := option.WithCredentialsFile("../accountCredentials.json")
+		app, _ := firebase.NewApp(context.Background(), nil, opt)
+		fcmClient, _ := app.Messaging(context.TODO())
 
-	// fmt.Println("Firebase OK")
+		_, err := fcmClient.Send(context.Background(), &messaging.Message{
+			Notification: &messaging.Notification{
+				Title:    "A nice notification title",
+				Body:     "A nice notification body",
+			},
+			// use one client web or mobile to generate this kind of token for fcm
+			Token: "dT8o52q92XObe5Y68c85oq:APA91bHwZPusjTqZz-qfUz32Ptgt-8Qe0xF9oO6WMg4RcHOkiEIO9GWODOgNbDUJ1GKVCse2DERJSFUe35qQYYNiWzpE-jIu3IVo9Z8nGy4TtxS5mbweeuUsB4M37yPYu7BU-HHUaXfn", // a token that you received from a client
+		})
+		if err != nil {
+			fmt.Println("fcm error")
+		}
+		c.JSON(http.StatusOK, gin.H{"ok": "ok"})
+	});
 
-	// fcmClient, err := app.Messaging(context.TODO())
 
-	// t := reflect.TypeOf(&fcmClient)
-	// for i := 0; i < t.NumMethod(); i++ {
-	// 	fmt.Println("FUCK")
-	// 	m := t.Method(i)
-	// 	fmt.Println(m.Name)
-	// }
-
-	// if err != nil {
-	// 	log.Fatalf("messaging: %s", err) 
-	// }
-
-	// response, err := fcmClient.Send(context.Background(), &messaging.Message{
-	// 	Notification: &messaging.Notification{
-	// 		Title:    "A nice notification title",
-	// 		Body:     "A nice notification body",
-	// 	},
-	// 	Token: "client-push-token", // a token that you received from a client
-	// })
-	
-	// if err != nil {
-	// 	fmt.Println("error fcm")
-	// 	fmt.Println(err);
-	// }
-	// fmt.Println(response)
-
-	// r.GET("/ping", func(c *gin.Context) {
-	// 	c.JSON(http.StatusOK, gin.H{
-	// 		"message": "pong",
-	// 	})
-	// })
-
-	// /**
-	// * Configured on shopify dashboard admin
-	// **/
-	// // TODO : check integrity shopify webhook
-	// // TODO : send notif => https://stackoverflow.com/questions/37371990/how-can-i-send-a-firebase-cloud-messaging-notification-without-use-the-firebase
-	// // TODO:  https://firebase.google.com/docs/cloud-messaging/send-message#go
-	// // https://hackernoon.com/how-to-send-millions-of-push-notifications-with-go-and-firebase-cloud-messaging-554w35rs
-	// r.POST("/webhook/order", func (c *gin.Context) {
-	// 	var webhookOrder types.WebhookOrder
-	// 	c.BindJSON(&webhookOrder)
-	// 	fmt.Println(webhookOrder.Email)
-	// 	c.JSON(http.StatusOK, gin.H{"newOrder":webhookOrder})
-	// });
-	// r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
+
+// // https://github.com/firebase/snippets-go/blob/master/admin/main.go
+
+
+// // => https://firebase.google.com/docs/cloud-messaging/send-message
+
+// // https://stackoverflow.com/questions/47431757/fcm-http-v1-how-to-get-access-token-using-go
+
+// import (
+// 	_"reflect"
+// 	_"log"
+// 	// "fmt"
+// 	"context"
+// 	// firebase "firebase.google.com/go"
+// 	// "firebase.google.com/go/messaging"
+// 	// "google.golang.org/api/option"
+// 	// _"github.com/gin-gonic/gin"
+// 	// types "github.com/sylvainSUPINTERNET/shopify-connector/types"
+// 	_"net/http"
+// 	// _"github.com/davecgh/go-spew/spew"
+// 	 "golang.org/x/oauth2/google"
+// 	 "golang.org/x/oauth2"
+// 	 "io/ioutil"
+// 	 "errors"
+// 	)
+
+
+// func main() {
+
+// 	// tokenProvider, err := newTokenProvider("../accountCredentials.json")
+	
+// 	// if err != nil {
+// 	// 	fmt.Errorf(" Error firebase init : %v", err)
+// 	// }
+	
+
+// 	// accessToken, _ := tokenProvider.token()
+// 	// fmt.Println(accessToken);
+
+// 	// opt := option.WithCredentialsFile("../accountCredentials.json")
+// 	// app, _ := firebase.NewApp(context.Background(), nil, opt)
+
+// 	// fcmClient, _ := app.Messaging(context.TODO())
+
+// 	// response, err := fcmClient.Send(context.Background(), &messaging.Message{
+// 	// 	Notification: &messaging.Notification{
+// 	// 		Title:    "A nice notification title",
+// 	// 		Body:     "A nice notification body",
+// 	// 	},
+// 	// 	Token: accessToken, // a token that you received from a client
+// 	// })
+
+// 	// if err != nil {
+// 	// 	fmt.Println(err)
+// 	// }
+
+// 	// fmt.Println(response)
+
+// 	// r := gin.Default()
+// 	// gin.SetMode(gin.DebugMode) // use ReleaseMode
+
+// 	// opt := option.WithCredentialsFile("../accountCredentials.json")
+// 	// app, _ := firebase.NewApp(context.Background(), nil, opt)
+	
+// 	// fcmClient, _ := app.Messaging(context.TODO())
+	
+//     // spew.Dump(fcmClient)
+
+
+// 	// if err != nil {
+// 	// 	fmt.Errorf(" Error firebase init : %v", err)
+// 	// 	//return nil, fmt.Errorf(" Error firebase init : %v", err)
+// 	// }
+
+// 	// fmt.Println("Firebase OK")
+
+// 	// fcmClient, err := app.Messaging(context.TODO())
+
+// 	// t := reflect.TypeOf(&fcmClient)
+// 	// for i := 0; i < t.NumMethod(); i++ {
+// 	// 	fmt.Println("FUCK")
+// 	// 	m := t.Method(i)
+// 	// 	fmt.Println(m.Name)
+// 	// }
+
+// 	// if err != nil {
+// 	// 	log.Fatalf("messaging: %s", err) 
+// 	// }
+
+// 	// response, err := fcmClient.Send(context.Background(), &messaging.Message{
+// 	// 	Notification: &messaging.Notification{
+// 	// 		Title:    "A nice notification title",
+// 	// 		Body:     "A nice notification body",
+// 	// 	},
+// 	// 	Token: "client-push-token", // a token that you received from a client
+// 	// })
+	
+// 	// if err != nil {
+// 	// 	fmt.Println("error fcm")
+// 	// 	fmt.Println(err);
+// 	// }
+// 	// fmt.Println(response)
+
+// 	// r.GET("/ping", func(c *gin.Context) {
+// 	// 	c.JSON(http.StatusOK, gin.H{
+// 	// 		"message": "pong",
+// 	// 	})
+// 	// })
+
+// 	// /**
+// 	// * Configured on shopify dashboard admin
+// 	// **/
+// 	// // TODO : check integrity shopify webhook
+// 	// // TODO : send notif => https://stackoverflow.com/questions/37371990/how-can-i-send-a-firebase-cloud-messaging-notification-without-use-the-firebase
+// 	// // TODO:  https://firebase.google.com/docs/cloud-messaging/send-message#go
+// 	// // https://hackernoon.com/how-to-send-millions-of-push-notifications-with-go-and-firebase-cloud-messaging-554w35rs
+// 	// r.POST("/webhook/order", func (c *gin.Context) {
+// 	// 	var webhookOrder types.WebhookOrder
+// 	// 	c.BindJSON(&webhookOrder)
+// 	// 	fmt.Println(webhookOrder.Email)
+// 	// 	c.JSON(http.StatusOK, gin.H{"newOrder":webhookOrder})
+// 	// });
+// 	// r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+// }
