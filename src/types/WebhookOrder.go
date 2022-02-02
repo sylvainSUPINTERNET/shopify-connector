@@ -2,7 +2,7 @@ package types
 
 
 type WebhookOrder struct {
-	Id string `json:"id"`
+	Id int `json:"id"`
 	Email string `json:"email"`
 	Name string `json:"name"`
 	Token string `json:"token"`

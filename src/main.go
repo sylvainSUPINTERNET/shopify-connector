@@ -16,13 +16,34 @@ func main() {
 	r := gin.Default()
 	gin.SetMode(gin.DebugMode) // use ReleaseMode
 
-	
 	r.POST("/webhook/order", func (c *gin.Context) {
-		// TODO from client android, generate token and save them to db
-		// here when we get order, we should get this token, and create with fcm client, new notification (using this token)
 		var webhookOrder types.WebhookOrder
-		c.BindJSON(&webhookOrder)
+		err := c.BindJSON(&webhookOrder)
+		if err != nil {
+			fmt.Println("ERROR")
+			fmt.Println(err)
+		}
 		fmt.Println(webhookOrder.Email)
+
+		opt := option.WithCredentialsFile("../accountCredentials.json")
+		app, _ := firebase.NewApp(context.Background(), nil, opt)
+		fcmClient, _ := app.Messaging(context.TODO())
+
+		response, err := fcmClient.Send(context.Background(), &messaging.Message{
+			Notification: &messaging.Notification{
+				Title:    "New order - " + webhookOrder.Name,
+				Body:     "Amount " + webhookOrder.TotalPrice,
+			},
+			// use one client web or mobile to generate this kind of token for fcm
+			Token: "dT8o52q92XObe5Y68c85oq:APA91bHwZPusjTqZz-qfUz32Ptgt-8Qe0xF9oO6WMg4RcHOkiEIO9GWODOgNbDUJ1GKVCse2DERJSFUe35qQYYNiWzpE-jIu3IVo9Z8nGy4TtxS5mbweeuUsB4M37yPYu7BU-HHUaXfn", // a token that you received from a client
+		})
+
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(response)
+		}
+
 		c.JSON(http.StatusOK, gin.H{"newOrder":webhookOrder})
 	});
 
