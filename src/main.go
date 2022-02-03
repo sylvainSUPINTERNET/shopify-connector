@@ -16,6 +16,35 @@ func main() {
 	r := gin.Default()
 	gin.SetMode(gin.DebugMode) // use ReleaseMode
 
+
+	r.POST("/webhook/cart/created", func (c *gin.Context) {
+	
+
+		opt := option.WithCredentialsFile("../accountCredentials.json")
+		app, _ := firebase.NewApp(context.Background(), nil, opt)
+		fcmClient, _ := app.Messaging(context.TODO())
+
+		response, err := fcmClient.Send(context.Background(), &messaging.Message{
+			Notification: &messaging.Notification{
+				Title:    "New order - TEST",
+				Body:     "Amount TEST",
+				ImageURL: "https://www.wowisclassic.com/media/CACHE/images/wow/talents/21a8c903-6f70-49af-8a0e-1e8438b22956/a05b96f36dd18d6f90fabba0917da382.jpg",
+			},
+			// use one client web or mobile to generate this kind of token for fcm
+			//Token: "dT8o52q92XObe5Y68c85oq:APA91bHwZPusjTqZz-qfUz32Ptgt-8Qe0xF9oO6WMg4RcHOkiEIO9GWODOgNbDUJ1GKVCse2DERJSFUe35qQYYNiWzpE-jIu3IVo9Z8nGy4TtxS5mbweeuUsB4M37yPYu7BU-HHUaXfn", // a token that you received from a client
+			Token: "crWXZarvBBGsa72UYKtEgn:APA91bFqj5fJmxw4IvrwyQGb0J3YWLYkstwuTIWZVadkJjCCKzQL-GwcMYoflCeA36S6HnlMVho3cByrN8B8TaZa_zH3v_MHFzpVNXZYA9n_kwxSV0NXUQOBtIqklgmNPkuYer62xorz",
+		})
+
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(response)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"newOrder":"TEST"})
+	});
+
+
 	r.POST("/webhook/order", func (c *gin.Context) {
 		var webhookOrder types.WebhookOrder
 		err := c.BindJSON(&webhookOrder)
@@ -33,9 +62,11 @@ func main() {
 			Notification: &messaging.Notification{
 				Title:    "New order - " + webhookOrder.Name,
 				Body:     "Amount " + webhookOrder.TotalPrice,
+				ImageURL: "https://www.wowisclassic.com/media/CACHE/images/wow/talents/21a8c903-6f70-49af-8a0e-1e8438b22956/a05b96f36dd18d6f90fabba0917da382.jpg",
 			},
 			// use one client web or mobile to generate this kind of token for fcm
-			Token: "dT8o52q92XObe5Y68c85oq:APA91bHwZPusjTqZz-qfUz32Ptgt-8Qe0xF9oO6WMg4RcHOkiEIO9GWODOgNbDUJ1GKVCse2DERJSFUe35qQYYNiWzpE-jIu3IVo9Z8nGy4TtxS5mbweeuUsB4M37yPYu7BU-HHUaXfn", // a token that you received from a client
+			//Token: "dT8o52q92XObe5Y68c85oq:APA91bHwZPusjTqZz-qfUz32Ptgt-8Qe0xF9oO6WMg4RcHOkiEIO9GWODOgNbDUJ1GKVCse2DERJSFUe35qQYYNiWzpE-jIu3IVo9Z8nGy4TtxS5mbweeuUsB4M37yPYu7BU-HHUaXfn", // a token that you received from a client
+			Token: "crWXZarvBBGsa72UYKtEgn:APA91bFqj5fJmxw4IvrwyQGb0J3YWLYkstwuTIWZVadkJjCCKzQL-GwcMYoflCeA36S6HnlMVho3cByrN8B8TaZa_zH3v_MHFzpVNXZYA9n_kwxSV0NXUQOBtIqklgmNPkuYer62xorz",
 		})
 
 		if err != nil {
